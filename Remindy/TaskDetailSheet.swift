@@ -23,6 +23,13 @@ struct TaskDetailSheet: View {
     @State private var isLogger: Bool
     @State private var linkedTagID: String?
     @State private var tagError: String?
+    @State private var hasPlace: Bool
+    @State private var placeName: String
+    @State private var latitude: Double?
+    @State private var longitude: Double?
+    @State private var radius: Double
+    @State private var placeTrigger: PlaceTrigger
+    @State private var showingPlacePicker = false
     @State private var newSubtaskTitle = ""
     @State private var nfcPulse = 0
     @FocusState private var titleFocused: Bool
@@ -38,6 +45,12 @@ struct TaskDetailSheet: View {
             _recurrence = State(initialValue: task.recurrence)
             _isLogger = State(initialValue: task.isLogger)
             _linkedTagID = State(initialValue: task.tagID)
+            _hasPlace = State(initialValue: task.hasPlace)
+            _placeName = State(initialValue: task.placeName)
+            _latitude = State(initialValue: task.latitude)
+            _longitude = State(initialValue: task.longitude)
+            _radius = State(initialValue: max(50, task.radiusMeters))
+            _placeTrigger = State(initialValue: task.placeTrigger)
         } else {
             _title = State(initialValue: "")
             _note = State(initialValue: "")
@@ -46,6 +59,12 @@ struct TaskDetailSheet: View {
             _recurrence = State(initialValue: .none)
             _isLogger = State(initialValue: false)
             _linkedTagID = State(initialValue: nil)
+            _hasPlace = State(initialValue: false)
+            _placeName = State(initialValue: "")
+            _latitude = State(initialValue: nil)
+            _longitude = State(initialValue: nil)
+            _radius = State(initialValue: 150)
+            _placeTrigger = State(initialValue: .onEntry)
         }
     }
 
@@ -87,6 +106,10 @@ struct TaskDetailSheet: View {
                     Text("Details")
                 }
 
+                if !isLogger {
+                    placeSection
+                }
+
                 if let task = existingTask {
                     subtasksSection(task)
                 }
@@ -119,12 +142,83 @@ struct TaskDetailSheet: View {
                 }
             }
             .onAppear {
-                if existingTask == nil {
+                guard existingTask == nil else { return }
+                Task {
+                    try? await Task.sleep(for: .seconds(0.55))
                     titleFocused = true
                 }
             }
             .sensoryFeedback(.impact(flexibility: .solid, intensity: 0.6), trigger: nfcPulse)
+            .sheet(isPresented: $showingPlacePicker) {
+                placePicker
+            }
         }
+    }
+
+    private var placeSection: some View {
+        Section {
+            Toggle("Remind Me at a Place", isOn: $hasPlace.animation(Motion.reveal))
+            if hasPlace {
+                Button {
+                    showingPlacePicker = true
+                } label: {
+                    HStack {
+                        Label(
+                            latitude != nil && longitude != nil
+                                ? (placeName.isEmpty ? "Selected place" : placeName)
+                                : "Choose Location\u{2026}",
+                            systemImage: "mappin.and.ellipse"
+                        )
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(latitude != nil ? Color.primary : Color.accentColor)
+                        Spacer()
+                        if latitude == nil {
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+                if latitude != nil && longitude != nil {
+                    VStack(alignment: .leading, spacing: 4) {
+                        LabeledContent("Radius") {
+                            Text("\(Int(radius)) m")
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                        }
+                        Slider(value: $radius, in: 50...500, step: 25) {
+                            Text("Radius")
+                        }
+                    }
+                    Picker("Alert", selection: $placeTrigger) {
+                        ForEach(PlaceTrigger.allCases) { option in
+                            Text(option.label).tag(option)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+            }
+        } header: {
+            Text("Place")
+        } footer: {
+            Text(hasPlace
+                ? "You'll get an alarm when you \(placeTrigger == .onEntry ? "arrive at" : "leave") this place \u{2014} even if Remindy is closed."
+                : "Get an alarm when you arrive at or leave a location.")
+        }
+    }
+
+    private var placePicker: some View {
+        PlacePickerSheet(
+            initial: latitude != nil && longitude != nil
+                ? PlaceSelection(latitude: latitude ?? 0, longitude: longitude ?? 0, name: placeName)
+                : nil,
+            onConfirm: { selection in
+                latitude = selection.latitude
+                longitude = selection.longitude
+                placeName = selection.name
+                LocationReminderStore.shared.requestPermissions()
+            }
+        )
     }
 
     private var calendarTransition: AnyTransition {
@@ -211,6 +305,7 @@ struct TaskDetailSheet: View {
         Section {
             Button {
                 task.isArchived.toggle()
+                LocationReminderStore.shared.reconcileNow()
                 Haptics.success()
                 dismiss()
             } label: {
@@ -221,6 +316,7 @@ struct TaskDetailSheet: View {
             }
             Button(role: .destructive) {
                 modelContext.delete(task)
+                LocationReminderStore.shared.reconcileNow()
                 dismiss()
             } label: {
                 Label("Delete Reminder", systemImage: "trash")
@@ -239,7 +335,9 @@ struct TaskDetailSheet: View {
             isLogger: isLogger
         )
         task.tagID = linkedTagID
+        applyPlace(to: task)
         modelContext.insert(task)
+        LocationReminderStore.shared.reconcileNow()
         Haptics.success()
         dismiss()
     }
@@ -251,11 +349,27 @@ struct TaskDetailSheet: View {
         if isLogger {
             task.dueDate = nil
             task.recurrence = .none
+            task.clearPlace()
         } else {
             task.dueDate = hasDueDate ? dueDate : nil
             task.recurrence = recurrence
+            applyPlace(to: task)
         }
         task.tagID = linkedTagID
+        LocationReminderStore.shared.reconcileNow()
+    }
+
+    private func applyPlace(to task: Reminder) {
+        if hasPlace, let latitude, let longitude {
+            task.latitude = latitude
+            task.longitude = longitude
+            task.radiusMeters = radius
+            task.placeName = placeName
+            task.placeTrigger = placeTrigger
+            task.ensureRegionID()
+        } else {
+            task.clearPlace()
+        }
     }
 
     private func addSubtask(to parent: Reminder) {

@@ -4,10 +4,12 @@ import TipKit
 
 @main
 struct RemindyApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     private let container: ModelContainer
 
     init() {
         container = Self.makeContainer()
+        LocationReminderStore.shared.attach(container: container)
         try? Tips.configure([
             .displayFrequency(.immediate),
             .datastoreLocation(.applicationDefault)
@@ -17,6 +19,11 @@ struct RemindyApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active {
+                        LocationReminderStore.shared.reconcileNow()
+                    }
+                }
         }
         .modelContainer(container)
     }

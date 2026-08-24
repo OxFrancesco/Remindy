@@ -17,7 +17,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>1.1</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -30,11 +30,15 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>6</string>
+	<string>8</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NFCReaderUsageDescription</key>
 	<string>Remindy reads and writes NFC tags to link them with your tasks.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Remindy monitors your chosen places so it can alert you when you arrive or leave, even when the app is closed.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Remindy uses your location to pick places and show where you are on the map.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

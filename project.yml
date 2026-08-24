@@ -12,8 +12,8 @@ settings:
     CODE_SIGN_STYLE: Automatic
     PRODUCT_BUNDLE_IDENTIFIER: com.francescooddo.Remindy
     ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-    MARKETING_VERSION: "1.0"
-    CURRENT_PROJECT_VERSION: "6"
+    MARKETING_VERSION: "1.1"
+    CURRENT_PROJECT_VERSION: "8"
 targets:
   Remindy:
     type: application
@@ -29,9 +29,11 @@ targets:
       path: Remindy/Info.plist
       properties:
         CFBundleDisplayName: Remindy
-        CFBundleVersion: "6"
+        CFBundleVersion: "8"
         UILaunchScreen: {}
         NFCReaderUsageDescription: Remindy reads and writes NFC tags to link them with your tasks.
+        NSLocationWhenInUseUsageDescription: Remindy uses your location to pick places and show where you are on the map.
+        NSLocationAlwaysAndWhenInUseUsageDescription: Remindy monitors your chosen places so it can alert you when you arrive or leave, even when the app is closed.
         ITSAppUsesNonExemptEncryption: false
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

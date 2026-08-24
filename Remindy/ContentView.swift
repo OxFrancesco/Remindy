@@ -180,11 +180,13 @@ struct ContentView: View {
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 modelContext.delete(task)
+                LocationReminderStore.shared.reconcileNow()
             } label: {
                 Label("Delete", systemImage: "trash")
             }
             Button {
                 task.isArchived.toggle()
+                LocationReminderStore.shared.reconcileNow()
             } label: {
                 Label(
                     task.isArchived ? "Unarchive" : "Archive",
@@ -209,12 +211,14 @@ struct ContentView: View {
             }
             Button {
                 task.isArchived.toggle()
+                LocationReminderStore.shared.reconcileNow()
             } label: {
                 Label(task.isArchived ? "Unarchive" : "Archive", systemImage: "archivebox")
             }
             Divider()
             Button(role: .destructive) {
                 modelContext.delete(task)
+                LocationReminderStore.shared.reconcileNow()
             } label: {
                 Label("Delete", systemImage: "trash")
             }
@@ -225,6 +229,7 @@ struct ContentView: View {
         for index in offsets {
             modelContext.delete(sections.active[index])
         }
+        LocationReminderStore.shared.reconcileNow()
     }
 
     private func toggleComplete(_ task: Reminder) {
@@ -232,6 +237,7 @@ struct ContentView: View {
         if task.isCurrentlyDone {
             Haptics.success()
         }
+        LocationReminderStore.shared.reconcileNow()
     }
 
     private func openHistory() {
@@ -376,7 +382,7 @@ private struct TaskRow: View {
 
     @ViewBuilder
     private var metadata: some View {
-        let hasMetadata = task.dueDate != nil || task.recurrence != .none || task.subtaskProgress != nil || task.isLogger
+        let hasMetadata = task.dueDate != nil || task.recurrence != .none || task.subtaskProgress != nil || task.hasPlace
         if hasMetadata {
             HStack(spacing: 6) {
                 if let due = task.dueDate {
@@ -386,11 +392,15 @@ private struct TaskRow: View {
                         tint: task.isOverdue ? .red : .secondary
                     )
                 }
+                if task.hasPlace {
+                    MetaChip(
+                        icon: "mappin.and.ellipse",
+                        text: task.placeName.isEmpty ? "Place" : task.placeName,
+                        tint: .teal
+                    )
+                }
                 if task.recurrence != .none {
                     MetaChip(icon: "repeat", text: task.recurrence.label)
-                }
-                if task.isLogger, let last = task.lastLogged {
-                    MetaChip(icon: "text.badge.checkmark", text: lastLoggedText(last))
                 }
                 if let progress = task.subtaskProgress {
                     MetaChip(icon: "list.bullet", text: progress)
@@ -407,14 +417,6 @@ private struct TaskRow: View {
         return date.formatted(.dateTime.month(.abbreviated).day())
     }
 
-    private func lastLoggedText(_ date: Date) -> String {
-        let calendar = Calendar.current
-        if calendar.isDateInToday(date) {
-            return "Logged \(date.formatted(date: .omitted, time: .shortened))"
-        }
-        if calendar.isDateInYesterday(date) { return "Logged yesterday" }
-        return "Logged \(date.formatted(.dateTime.month(.abbreviated).day()))"
-    }
 }
 
 private struct MetaChip: View {

@@ -15,7 +15,6 @@ struct HistoryView: View {
     @State private var month: Date = Calendar.current.startOfMonth()
     @State private var selectedDay: Date? = .now
     @State private var monthDirection = 0
-    @State private var gridAppeared = false
     @Namespace private var dayNamespace
 
     private var calendar: Calendar { Calendar.current }
@@ -94,11 +93,6 @@ struct HistoryView: View {
             }
             .sensoryFeedback(.selection, trigger: selectedDay)
             .sensoryFeedback(.selection, trigger: month)
-            .onAppear {
-                withAnimation(reduceMotion ? Motion.reveal : Motion.calendar) {
-                    gridAppeared = true
-                }
-            }
         }
     }
 
@@ -156,12 +150,6 @@ struct HistoryView: View {
                             selectedDay = date
                         }
                     }
-                    .opacity(gridAppeared ? 1 : 0)
-                    .scaleEffect(gridAppeared ? 1 : 0.94)
-                    .animation(
-                        reduceMotion ? Motion.reveal : Motion.weekStagger(row: cell.week),
-                        value: gridAppeared
-                    )
                 } else {
                     Color.clear.frame(height: 40)
                 }
